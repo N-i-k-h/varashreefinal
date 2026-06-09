@@ -1,0 +1,237 @@
+/* Global Theme - Reverting to Light/Green */
+
+body {
+  background-color: #fcefe7 !important;
+  /* Soft Beige/Cream */
+  font-family: 'Poppins', sans-serif;
+  color: #2c3e50;
+  /* Darker Slate for Text */
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #2e8b57 !important;
+  /* Sea Green */
+  font-weight: 700;
+}
+
+/* Card & Containers */
+.card,
+.bg-white,
+form,
+.table-responsive,
+.bg-light {
+  background-color: #ffffff !important;
+  color: #333 !important;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+  /* Subtle Shadow */
+}
+
+/* Inputs - Light Fields */
+.form-control,
+.form-select {
+  background-color: #ffffff !important;
+  border: 1px solid #ced4da !important;
+  color: #333 !important;
+  border-radius: 8px !important;
+  padding: 10px 14px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: #ffffff !important;
+  border-color: #2e8b57 !important;
+  /* Green Focus */
+  box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.25) !important;
+  color: #333 !important;
+}
+
+/* Primary Button - Classic Green */
+.btn-primary,
+button.bg-blue-600 {
+  background-color: #2e8b57 !important;
+  /* Sea Green */
+  border-color: #2e8b57 !important;
+  color: #ffffff;
+  padding: 10px 20px;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: #276e46 !important;
+  /* Darker Green */
+  border-color: #276e46 !important;
+  transform: translateY(-1px);
+}
+
+/* Secondary/Outline Buttons */
+.btn-outline-primary {
+  color: #2e8b57 !important;
+  border-color: #2e8b57 !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: #2e8b57 !important;
+  color: #fff !important;
+}
+
+/* Sidebar Styling - Green Panel */
+.sidebar,
+.bg-success {
+  background-color: #2e8b57 !important;
+  /* Matches Button */
+  border-right: none;
+}
+
+/* Links & Navigation */
+.nav-link {
+  color: rgba(255, 255, 255, 0.85) !important;
+  margin: 4px 0;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.nav-link.active {
+  background-color: #ffffff !important;
+  /* White Active State */
+  color: #2e8b57 !important;
+  /* Green Text */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-weight: bold;
+}
+
+/* Table Styling */
+.table {
+  color: #333 !important;
+  background-color: transparent !important;
+}
+
+.table thead th {
+  background-color: #e8f5e9 !important;
+  /* Very Light Green */
+  color: #1b5e20;
+  border-bottom: 2px solid #c8e6c9;
+}
+
+.table tbody td {
+  border-bottom: 1px solid #f1f1f1;
+  color: #444;
+}
+
+.table-hover tbody tr:hover {
+  background-color: #f1f8e9 !important;
+  /* Light Green Hover */
+}
+
+/* Text Utility Overrides */
+.text-dark {
+  color: #333 !important;
+}
+
+.text-success {
+  color: #2e8b57 !important;
+}
+
+.text-danger {
+  color: #d32f2f !important;
+}
+
+.text-primary {
+  color: #2e8b57 !important;
+  /* Map Bootstrap primary to Green */
+}
+
+.text-muted {
+  color: #6c757d !important;
+}
+
+/* Alerts */
+.alert-info {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  border-color: #bbdefb;
+}
+
+.alert-success {
+  background-color: #e8f5e9;
+  color: #1b5e20;
+  border-color: #c8e6c9;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+/* Drag and Drop Zone styling */
+.drag-drop-zone {
+  border: 2px dashed #2e8b57;
+  border-radius: 12px;
+  background-color: #fcfbf9;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.drag-drop-zone:hover {
+  background-color: #f3f9f5;
+  border-color: #276e46;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(46, 139, 87, 0.08);
+}
+
+.drag-drop-zone.dragging {
+  background-color: #e8f5e9;
+  border-color: #1b5e20;
+  border-style: solid;
+  transform: scale(1.01);
+}
+
+.drag-drop-icon {
+  font-size: 2.5rem;
+  color: #2e8b57;
+  margin-bottom: 12px;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: inline-block;
+}
+
+.drag-drop-zone:hover .drag-drop-icon {
+  transform: translateY(-5px) scale(1.1);
+}
+
+.drag-drop-zone.dragging .drag-drop-icon {
+  animation: bounce 0.6s infinite alternate ease-in-out;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0) scale(1.1); }
+  to { transform: translateY(-10px) scale(1.1); }
+}
+
+.drag-drop-zone input[type="file"] {
+  display: none;
+}

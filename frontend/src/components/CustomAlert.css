@@ -1,0 +1,83 @@
+/* Custom Alert container styles */
+.custom-alert-container {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 300px;
+    max-width: 480px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    animation: slideDownFadeIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+}
+
+/* Success style (Green color combo matching Varashree) */
+.custom-alert-success {
+    background: linear-gradient(135deg, rgba(46, 125, 50, 0.95) 0%, rgba(76, 175, 80, 0.95) 100%);
+    color: white;
+}
+
+/* Danger style (Red/Orange combo) */
+.custom-alert-danger {
+    background: linear-gradient(135deg, rgba(198, 40, 40, 0.95) 0%, rgba(229, 115, 115, 0.95) 100%);
+    color: white;
+}
+
+/* Content layout */
+.custom-alert-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-grow: 1;
+}
+
+.custom-alert-icon {
+    font-size: 1.35rem;
+    display: flex;
+    align-items: center;
+}
+
+.custom-alert-message {
+    font-weight: 500;
+}
+
+/* Close button */
+.custom-alert-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.custom-alert-close:hover {
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Entry Animation */
+@keyframes slideDownFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}

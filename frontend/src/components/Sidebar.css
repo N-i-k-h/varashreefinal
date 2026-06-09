@@ -1,0 +1,58 @@
+/* Modern Sidebar Styling */
+
+.custom-sidebar {
+    /* Rich Deep Green Gradient */
+    background: linear-gradient(180deg, #0f3d0f 0%, #2e8b57 100%);
+    color: white;
+    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Navigation Links */
+.custom-nav-link {
+    color: rgba(255, 255, 255, 0.85) !important;
+    padding: 12px 18px !important;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    align-items: center;
+    position: relative;
+    border: 1px solid transparent;
+}
+
+/* Hover Effect - Slide & Glass */
+.custom-nav-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff !important;
+    transform: translateX(6px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Active State - Pop & Glow */
+.custom-nav-link.active {
+    background: white !important;
+    color: #1b5e20 !important;
+    /* Deep Green Text */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    font-weight: 700;
+    transform: scale(1.02);
+}
+
+/* Icon Styling & Animation */
+.custom-nav-link i {
+    font-size: 1.1rem;
+    transition: transform 0.3s ease;
+    margin-right: 12px;
+}
+
+.custom-nav-link:hover i {
+    transform: rotate(10deg) scale(1.2);
+}
+
+.custom-nav-link.active i {
+    color: #2e8b57;
+    transform: scale(1.1);
+}
