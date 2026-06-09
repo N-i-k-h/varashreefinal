@@ -21,8 +21,26 @@ export function convertToWords(num) {
     return inWords(Math.floor(num)).trim() + " Rupees Only";
 }
 
+/* ================= IMAGE LOADER ================= */
+const loadImageBase64 = (url) => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = (err) => reject(err);
+        img.src = url;
+    });
+};
+
 /* ================= SHARED HEADER ================= */
-const addHeader = (doc, title, entity, isFirstPage) => {
+const addHeader = (doc, title, entity, isFirstPage, logoBase64) => {
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
 
@@ -33,10 +51,18 @@ const addHeader = (doc, title, entity, isFirstPage) => {
 
     if (isFirstPage) {
         // Logo
-        try {
-            doc.addImage("/logo.png", "PNG", 15, 15, 30, 0);
-        } catch (e) {
-            console.warn("Logo failed to load", e);
+        if (logoBase64) {
+            try {
+                doc.addImage(logoBase64, "PNG", 15, 15, 30, 0);
+            } catch (e) {
+                console.warn("Logo failed to render in PDF", e);
+            }
+        } else {
+            try {
+                doc.addImage("/logo.png", "PNG", 15, 15, 30, 0);
+            } catch (e) {
+                console.warn("Logo URL fallback failed", e);
+            }
         }
 
         // Company Details
@@ -93,13 +119,20 @@ const addHeader = (doc, title, entity, isFirstPage) => {
 };
 
 /* ================= GENERATE PDF ================= */
-export const generatePDF = (type, entity, items) => {
+export const generatePDF = async (type, entity, items) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
     const title = type === "order" ? "INVOICE" : "ESTIMATE";
 
-    addHeader(doc, title, entity, true);
+    let logoBase64 = null;
+    try {
+        logoBase64 = await loadImageBase64("/logo.png");
+    } catch (e) {
+        console.warn("Failed to load logo base64", e);
+    }
+
+    addHeader(doc, title, entity, true, logoBase64);
 
     const tableData = items.map((it, i) => [
         i + 1,
@@ -110,7 +143,7 @@ export const generatePDF = (type, entity, items) => {
     ]);
 
     autoTable(doc, {
-        startY: type === "order" ? 115 : 115,
+        startY: 115,
         head: [["No", "Particulars", "Qty", "Rate", "Total"]],
         body: tableData,
         theme: "grid",
@@ -136,7 +169,7 @@ export const generatePDF = (type, entity, items) => {
         },
         didDrawPage: (data) => {
             if (data.pageNumber > 1) {
-                addHeader(doc, title, entity, false);
+                addHeader(doc, title, entity, false, logoBase64);
             }
         },
         margin: { top: 15, bottom: 15, left: 10, right: 10 }
@@ -149,7 +182,7 @@ export const generatePDF = (type, entity, items) => {
     if (type === "order") {
         if (finalY + 66 > pageHeight) {
             doc.addPage();
-            addHeader(doc, title, entity, false);
+            addHeader(doc, title, entity, false, logoBase64);
             finalY = 25;
         }
 
@@ -195,7 +228,7 @@ export const generatePDF = (type, entity, items) => {
     } else {
         if (finalY + 46 > pageHeight) {
             doc.addPage();
-            addHeader(doc, title, entity, false);
+            addHeader(doc, title, entity, false, logoBase64);
             finalY = 25;
         }
 
