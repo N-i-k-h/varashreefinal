@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../api";
 import { generatePDF } from "../utils/pdfGenerator";
 import CustomAlert from "./CustomAlert";
 
 export default function CreateEstimation() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [plants, setPlants] = useState([]);
   const [items, setItems] = useState([]);
   const [estimations, setEstimations] = useState([]);
@@ -19,16 +22,41 @@ export default function CreateEstimation() {
   };
 
   const [form, setForm] = useState({
-    customerName: "",
-    customerContact: "",
-    customerAddress: "",
+    customerName: location.state?.customerName || "",
+    customerContact: location.state?.customerContact || "",
+    customerAddress: location.state?.customerAddress || "",
   });
 
   /* ================= LOAD DATA ================= */
   useEffect(() => {
-    API.get("/plants").then(res => setPlants(res.data));
+    API.get("/plants").then(res => {
+      const fetchedPlants = res.data;
+      setPlants(fetchedPlants);
+
+      // Pre-populate if navigation state exists
+      if (location.state && location.state.items) {
+        const mappedItems = location.state.items.map((item) => {
+          let matchedId = item.plantId;
+          // Attempt to resolve plantId by name if missing
+          if (!matchedId && fetchedPlants) {
+            const matchedPlant = fetchedPlants.find(
+              (p) => p.plantName.toLowerCase() === item.plantName.toLowerCase()
+            );
+            if (matchedPlant) {
+              matchedId = matchedPlant.id || matchedPlant._id;
+            }
+          }
+          return {
+            ...item,
+            plantId: matchedId || "",
+            selected: true, // Close dropdown
+          };
+        });
+        setItems(mappedItems);
+      }
+    });
     loadEstimations();
-  }, []);
+  }, [location.state]);
 
   const loadEstimations = async () => {
     const res = await API.get("/estimations");
@@ -40,6 +68,7 @@ export default function CreateEstimation() {
     setItems([
       ...items,
       {
+        plantId: "",
         plantName: "",
         rate: 0,
         quantity: 1,
@@ -58,6 +87,7 @@ export default function CreateEstimation() {
     const next = [...items];
     next[idx] = {
       ...next[idx],
+      plantId: plant.id || plant._id,
       plantName: plant.plantName,
       rate: plant.price,
       quantity: 1,
@@ -76,6 +106,7 @@ export default function CreateEstimation() {
   };
 
   const subTotal = items.reduce((s, i) => s + i.total, 0);
+  const totalPlants = items.reduce((s, i) => s + Number(i.quantity || 0), 0);
   /* ================= SUBMIT ================= */
   const submit = async (e) => {
     e.preventDefault();
@@ -100,6 +131,44 @@ export default function CreateEstimation() {
       console.error("❌ Submission failed:", err);
       showAlert("Failed to create estimation", "danger");
     }
+  };
+
+  const convertToOrder = (estimation) => {
+    navigate("/orders/create", {
+      state: {
+        customerName: estimation.customerName,
+        customerContact: estimation.customerContact,
+        customerAddress: estimation.customerAddress,
+        items: estimation.items.map((item) => ({
+          plantId: item.plantId || null,
+          plantName: item.plantName,
+          rate: item.rate,
+          quantity: item.quantity,
+          total: item.total,
+          search: item.plantName,
+          showDropdown: false,
+        })),
+      },
+    });
+  };
+
+  const createOrderFromActiveForm = () => {
+    navigate("/orders/create", {
+      state: {
+        customerName: form.customerName,
+        customerContact: form.customerContact,
+        customerAddress: form.customerAddress,
+        items: items.map((item) => ({
+          plantId: item.plantId || null,
+          plantName: item.plantName,
+          rate: item.rate,
+          quantity: item.quantity,
+          total: item.total,
+          search: item.plantName,
+          showDropdown: false,
+        })),
+      },
+    });
   };
 
   return (
@@ -234,12 +303,18 @@ export default function CreateEstimation() {
 
         {/* TOTAL */}
         <div className="text-end border-top pt-3">
-          <strong>Estimated Cost: ₹ {subTotal.toFixed(2)}</strong>
+          <div className="mb-1"><strong>Total Plants:</strong> {totalPlants}</div>
+          <div><strong>Estimated Cost: ₹ {subTotal.toFixed(2)}</strong></div>
         </div>
 
-        <button className="btn btn-success mt-3" disabled={!items.length}>
-          Create Estimation
-        </button>
+        <div className="d-flex gap-3 mt-3">
+          <button type="submit" className="btn btn-success" disabled={!items.length}>
+            Create Estimation
+          </button>
+          <button type="button" className="btn btn-outline-success" disabled={!items.length} onClick={createOrderFromActiveForm}>
+            Create Order
+          </button>
+        </div>
       </form>
 
       {/* ================= DASHBOARD ================= */}
@@ -272,12 +347,22 @@ export default function CreateEstimation() {
                 </td>
                 <td>{new Date(e.createdAt).toLocaleDateString("en-IN")}</td>
                 <td>
-                  <button 
-                    className="btn btn-outline-danger btn-sm"
-                    onClick={() => generatePDF("estimate", e, e.items)}
-                  >
-                    <i className="bi bi-filetype-pdf"></i> PDF
-                  </button>
+                  <div className="d-flex gap-2">
+                    <button 
+                      className="btn btn-outline-danger btn-sm"
+                      onClick={() => generatePDF("estimate", e, e.items)}
+                      title="Download PDF"
+                    >
+                      <i className="bi bi-filetype-pdf"></i> PDF
+                    </button>
+                    <button 
+                      className="btn btn-success btn-sm"
+                      onClick={() => convertToOrder(e)}
+                      title="Convert to Order"
+                    >
+                      <i className="bi bi-cart-plus"></i> Create Order
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

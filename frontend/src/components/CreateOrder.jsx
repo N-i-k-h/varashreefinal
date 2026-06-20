@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import API from "../api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { generatePDF } from "../utils/pdfGenerator";
 import CustomAlert from "./CustomAlert";
 
 export default function CreateOrder() {
+  const location = useLocation();
   const [plants, setPlants] = useState([]);
   const [items, setItems] = useState([]);
   const [discount, setDiscount] = useState(0);
@@ -15,16 +16,25 @@ export default function CreateOrder() {
     type: "success",
   });
 
+  const getTodayDateString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const showAlert = (message, type = "success") => {
     setAlertConfig({ show: true, message, type });
   };
 
   const [form, setForm] = useState({
-    customerName: "",
-    customerContact: "",
-    customerAddress: "",
+    customerName: location.state?.customerName || "",
+    customerContact: location.state?.customerContact || "",
+    customerAddress: location.state?.customerAddress || "",
     finalPaymentDate: "",
     employeeName: "",
+    createdAt: getTodayDateString(),
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,13 +42,38 @@ export default function CreateOrder() {
   const navigate = useNavigate();
 
   // =============================
-  // FETCH PLANTS
+  // FETCH PLANTS & POPULATE ESTIMATION
   // =============================
   useEffect(() => {
     API.get("/plants")
-      .then((res) => setPlants(res.data))
+      .then((res) => {
+        const fetchedPlants = res.data;
+        setPlants(fetchedPlants);
+
+        // Pre-populate if navigation state exists from estimation
+        if (location.state && location.state.items) {
+          const mappedItems = location.state.items.map((item) => {
+            let matchedId = item.plantId;
+            // Attempt to resolve plantId by name if it's missing/null
+            if (!matchedId && fetchedPlants) {
+              const matchedPlant = fetchedPlants.find(
+                (p) => p.plantName.toLowerCase() === item.plantName.toLowerCase()
+              );
+              if (matchedPlant) {
+                matchedId = matchedPlant.id || matchedPlant._id;
+              }
+            }
+            return {
+              ...item,
+              plantId: matchedId || "",
+              showDropdown: false,
+            };
+          });
+          setItems(mappedItems);
+        }
+      })
       .catch(console.error);
-  }, []);
+  }, [location.state]);
 
   // =============================
   // ADD / REMOVE ITEM
@@ -95,6 +130,7 @@ export default function CreateOrder() {
   // =============================
   const subTotal = items.reduce((sum, i) => sum + i.total, 0);
   const grandTotal = subTotal - Number(discount || 0);
+  const totalPlants = items.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
 
   // ✅ Paid Amount State (default to grandTotal)
   const [paidAmount, setPaidAmount] = useState(0);
@@ -143,6 +179,7 @@ export default function CreateOrder() {
       paymentMethod,
       finalPaymentDate: balanceAmount > 0 ? form.finalPaymentDate : null,
       employeeName: form.employeeName,
+      createdAt: form.createdAt ? new Date(form.createdAt) : new Date(),
     };
 
     try {
@@ -315,7 +352,7 @@ export default function CreateOrder() {
           })}
         </div>
 
-        {/* EMPLOYEE NAME (Moved Here) */}
+        {/* EMPLOYEE & DATE INFO */}
         <div className="row mb-3">
           <div className="col-md-4">
             <label className="fw-bold">Employee Name (Attended By)</label>
@@ -329,13 +366,27 @@ export default function CreateOrder() {
               }
             />
           </div>
+          <div className="col-md-4">
+            <label className="fw-bold">Order Date *</label>
+            <input
+              type="date"
+              className="form-control border-primary"
+              required
+              max={getTodayDateString()}
+              value={form.createdAt}
+              onChange={(e) =>
+                setForm({ ...form, createdAt: e.target.value })
+              }
+            />
+          </div>
         </div>
 
         {/* TOTALS */}
         <div className="border-top pt-3">
           <div className="row">
             <div className="col-md-4 offset-md-8">
-              <p><strong>Subtotal:</strong> ₹ {subTotal.toFixed(2)}</p>
+              <p className="mb-1"><strong>Total Plants:</strong> {totalPlants}</p>
+              <p className="mb-2"><strong>Subtotal:</strong> ₹ {subTotal.toFixed(2)}</p>
 
               <div className="mb-2">
                 <label>Discount</label>

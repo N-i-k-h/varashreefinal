@@ -15,6 +15,14 @@ export default function CreateAdvanceOrder() {
         type: "success",
     });
 
+    const getTodayDateString = () => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
     const showAlert = (message, type = "success") => {
         setAlertConfig({ show: true, message, type });
     };
@@ -24,6 +32,8 @@ export default function CreateAdvanceOrder() {
         customerContact: "",
         customerAddress: "",
         finalPaymentDate: "", // ✅ Added for Advance Order
+        employeeName: "",
+        createdAt: getTodayDateString(),
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -93,6 +103,7 @@ export default function CreateAdvanceOrder() {
     // =============================
     const subTotal = items.reduce((sum, i) => sum + i.total, 0);
     const grandTotal = subTotal - Number(discount || 0);
+    const totalPlants = items.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
 
     // ✅ Paid Amount State (For Advance, default to 0 or manual)
     const [paidAmount, setPaidAmount] = useState(0);
@@ -133,6 +144,7 @@ export default function CreateAdvanceOrder() {
             finalPaymentDate: form.finalPaymentDate,
             paymentMethod,
             employeeName: form.employeeName, // ✅ Send Employee Name
+            createdAt: form.createdAt ? new Date(form.createdAt) : new Date(),
         };
 
         try {
@@ -316,11 +328,10 @@ export default function CreateAdvanceOrder() {
                     })}
                 </div>
 
-                {/* TOTALS */}
-                {/* EMPLOYEE NAME */}
+                {/* METADATA INFO */}
                 <div className="row mb-3">
                     <div className="col-md-3">
-                        <label className="fw-bold">Employee Name (Attended By)</label>
+                        <label className="fw-bold">Employee Name (Attended By) *</label>
                         <input
                             className="form-control border-primary"
                             required
@@ -331,12 +342,26 @@ export default function CreateAdvanceOrder() {
                             }
                         />
                     </div>
+                    <div className="col-md-3">
+                        <label className="fw-bold">Order Date *</label>
+                        <input
+                            type="date"
+                            className="form-control border-primary"
+                            required
+                            max={getTodayDateString()}
+                            value={form.createdAt}
+                            onChange={(e) =>
+                                setForm({ ...form, createdAt: e.target.value })
+                            }
+                        />
+                    </div>
                 </div>
 
                 <div className="border-top pt-3">
                     <div className="row">
                         <div className="col-md-4 offset-md-8">
-                            <p><strong>Subtotal:</strong> ₹ {subTotal.toFixed(2)}</p>
+                            <p className="mb-1"><strong>Total Plants:</strong> {totalPlants}</p>
+                            <p className="mb-2"><strong>Subtotal:</strong> ₹ {subTotal.toFixed(2)}</p>
 
                             <div className="mb-2">
                                 <label>Discount</label>

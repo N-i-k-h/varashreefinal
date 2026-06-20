@@ -343,6 +343,7 @@ router.post("/", async (req, res) => {
         paymentMethod: payload.paymentMethod || "Cash",
         employeeName: payload.employeeName,
         orderItems: orderItems,
+        createdAt: payload.createdAt || new Date(),
       });
 
       res.status(201).json({
