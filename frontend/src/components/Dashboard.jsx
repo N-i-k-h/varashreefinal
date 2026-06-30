@@ -6,9 +6,11 @@ import "./Dashboard.css"; // Import Custom Styles
 
 const getStatValueStyle = (value) => {
   const len = String(value).length;
-  if (len > 15) return { fontSize: "1.35rem" };
-  if (len > 11) return { fontSize: "1.65rem" };
-  if (len > 8) return { fontSize: "1.95rem" };
+  if (len > 17) return { fontSize: "1.1rem" };
+  if (len > 15) return { fontSize: "1.25rem" };
+  if (len > 12) return { fontSize: "1.4rem" };
+  if (len > 10) return { fontSize: "1.6rem" };
+  if (len > 8) return { fontSize: "1.85rem" };
   return {};
 };
 
@@ -38,13 +40,16 @@ export default function Dashboard() {
   // Calculate revenue: Only add if balance is 0 (fully paid)
   // Or stick to total grand total logic depending on business rule.
   // Assuming revenue = all orders value for now or filtered by payment status if available.
+  // Exclude Cancelled orders from revenue.
   const totalRevenue = orders.reduce((s, o) => {
+    if (o.status === "Cancelled") return s;
     // If balanceAmount is missing, assume 0 (for old orders)
     const balance = o.balanceAmount !== undefined ? o.balanceAmount : 0;
     // Revenue logic: Only fully paid? Or all sales? Let's assume all Sales for Dashboard display
     return s + (o.grandTotal || 0);
   }, 0);
 
+  const activeOrders = orders.filter((o) => o.status !== "Cancelled");
   const totalStock = plants.reduce((s, p) => s + (p.stock || 0), 0);
   const lowStockPlants = plants.filter((p) => p.stock <= 5);
 
@@ -68,7 +73,7 @@ export default function Dashboard() {
       <div className="row g-4 mb-5">
 
         {/* TOTAL PLANTS */}
-        <div className="col-12 col-sm-6 col-lg-3">
+        <div className="col-6 col-sm-6 col-md-3 col-lg-3">
           <div className="stat-card card-gradient-teal h-100" style={{ animation: "slideInUp 0.3s ease-out" }}>
             <div className="card-body">
               <div className="d-flex flex-column">
@@ -81,7 +86,7 @@ export default function Dashboard() {
         </div>
 
         {/* TOTAL STOCK */}
-        <div className="col-12 col-sm-6 col-lg-3">
+        <div className="col-6 col-sm-6 col-md-3 col-lg-3">
           <div className="stat-card card-gradient-purple h-100" style={{ animation: "slideInUp 0.4s ease-out" }}>
             <div className="card-body">
               <div className="d-flex flex-column">
@@ -94,12 +99,12 @@ export default function Dashboard() {
         </div>
 
         {/* TOTAL ORDERS */}
-        <div className="col-12 col-sm-6 col-lg-3">
+        <div className="col-6 col-sm-6 col-md-3 col-lg-3">
           <div className="stat-card card-gradient-orange h-100" style={{ animation: "slideInUp 0.5s ease-out" }}>
             <div className="card-body">
               <div className="d-flex flex-column">
                 <small className="text-white text-uppercase fw-bold mb-1">Total Orders</small>
-                <h2 className="fw-bold mb-0 text-white stat-card-value" style={getStatValueStyle(orders.length)}>{orders.length}</h2>
+                <h2 className="fw-bold mb-0 text-white stat-card-value" style={getStatValueStyle(activeOrders.length)}>{activeOrders.length}</h2>
               </div>
               <i className="bi bi-cart-check stat-icon-bg"></i>
             </div>
@@ -107,7 +112,7 @@ export default function Dashboard() {
         </div>
 
         {/* TOTAL REVENUE */}
-        <div className="col-12 col-sm-6 col-lg-3">
+        <div className="col-6 col-sm-6 col-md-3 col-lg-3">
           <div className="stat-card card-gradient-green h-100" style={{ animation: "slideInUp 0.6s ease-out" }}>
             <div className="card-body">
               <div className="d-flex flex-column">
@@ -158,17 +163,20 @@ export default function Dashboard() {
             </div>
             <ul className="list-group list-group-flush list-custom">
               {orders.length > 0 ? (
-                orders.slice(0, 5).map((o) => (
-                  <li key={o.id} className="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                      <div className="fw-bold text-dark">{o.customerName || "Walk-in Customer"}</div>
-                      <div className="text-muted small">ID: {o.orderNo}</div>
-                    </div>
-                    <span className="fw-bold text-success">
-                      ₹{o.grandTotal?.toLocaleString('en-IN')}
-                    </span>
-                  </li>
-                ))
+                orders.slice(0, 5).map((o) => {
+                  const isCancelled = o.status === "Cancelled";
+                  return (
+                    <li key={o.id} className="list-group-item d-flex justify-content-between align-items-center">
+                      <div>
+                        <div className={`fw-bold ${isCancelled ? "text-decoration-line-through text-muted" : "text-dark"}`}>{o.customerName || "Walk-in Customer"}</div>
+                        <div className="text-muted small">ID: {o.orderNo} {isCancelled && <span className="badge bg-danger ms-1">Cancelled</span>}</div>
+                      </div>
+                      <span className={`fw-bold ${isCancelled ? "text-decoration-line-through text-muted" : "text-success"}`}>
+                        ₹{o.grandTotal?.toLocaleString('en-IN')}
+                      </span>
+                    </li>
+                  );
+                })
               ) : (
                 <li className="list-group-item text-center text-muted py-4">
                   No orders yet.

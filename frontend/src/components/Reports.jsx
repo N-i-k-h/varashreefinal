@@ -42,14 +42,15 @@ export default function Reports() {
   const downloadExcel = () => {
     if (results.length === 0) return alert("No data to export");
 
-    // Calculate Totals
-    const totalGrand = results.reduce((sum, r) => sum + (r.grandTotal || 0), 0);
-    const totalPaid = results.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
-    const totalBalance = results.reduce((sum, r) => sum + (r.balanceAmount || 0), 0);
+    // Calculate Totals excluding Cancelled orders
+    const activeResults = results.filter((r) => r.status !== "Cancelled");
+    const totalGrand = activeResults.reduce((sum, r) => sum + (r.grandTotal || 0), 0);
+    const totalPaid = activeResults.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
+    const totalBalance = activeResults.reduce((sum, r) => sum + (r.balanceAmount || 0), 0);
 
     // Calculate Payment Method Breakdown
     let cash = 0, card = 0, online = 0;
-    results.forEach((r) => {
+    activeResults.forEach((r) => {
       const method = (r.paymentMethod || "Cash").toLowerCase();
       const paid = r.paidAmount || 0;
       if (method.includes("cash")) cash += paid;
@@ -57,23 +58,24 @@ export default function Reports() {
       else online += paid; // Assume rest is Old/Online/UPI
     });
 
-    // Format Data
+    // Format Data (include Cancelled bills in data list with clear status)
     const data = results.map((r, i) => ({
       "No": i + 1,
-      "Order No": r.orderNo,
+      "Order No": r.status === "Cancelled" ? `${r.orderNo} [CANCELLED]` : r.orderNo,
       "Customer": r.customerName,
       "Date": new Date(r.createdAt).toLocaleString(),
       "Payment Method": r.paymentMethod || "Cash",
       "Status": r.status,
-      "Total (₹)": r.grandTotal || 0,
-      "Paid (₹)": r.paidAmount || 0,
-      "Balance (₹)": r.balanceAmount || 0,
+      "Total (₹)": r.status === "Cancelled" ? 0 : (r.grandTotal || 0),
+      "Paid (₹)": r.status === "Cancelled" ? 0 : (r.paidAmount || 0),
+      "Balance (₹)": r.status === "Cancelled" ? 0 : (r.balanceAmount || 0),
+      "Remarks": r.status === "Cancelled" ? "CANCELLED" : "",
     }));
 
     // Add Summary Rows
     data.push(
       {}, // Empty row for spacing
-      { "Order No": "SUMMARY REPORT" },
+      { "Order No": "SUMMARY REPORT (EXCLUDING CANCELLED)" },
       { "Order No": "Total Revenue", "Total (₹)": totalGrand, "Paid (₹)": totalPaid, "Balance (₹)": totalBalance },
       { "Order No": "Cash Collection", "Paid (₹)": cash },
       { "Order No": "Card Collection", "Paid (₹)": card },
@@ -92,13 +94,14 @@ export default function Reports() {
 
     const doc = new jsPDF();
 
-    // Summary Calculations
-    const totalGrand = results.reduce((sum, r) => sum + (r.grandTotal || 0), 0);
-    const totalPaid = results.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
-    const totalBalance = results.reduce((sum, r) => sum + (r.balanceAmount || 0), 0);
+    // Summary Calculations excluding Cancelled orders
+    const activeResults = results.filter((r) => r.status !== "Cancelled");
+    const totalGrand = activeResults.reduce((sum, r) => sum + (r.grandTotal || 0), 0);
+    const totalPaid = activeResults.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
+    const totalBalance = activeResults.reduce((sum, r) => sum + (r.balanceAmount || 0), 0);
 
     let cash = 0, card = 0, upi = 0, other = 0;
-    results.forEach((r) => {
+    activeResults.forEach((r) => {
       const method = (r.paymentMethod || "Cash").toLowerCase();
       const paid = r.paidAmount || 0;
       if (method.includes("cash")) cash += paid;
@@ -114,23 +117,26 @@ export default function Reports() {
     doc.setTextColor(0, 0, 0);
     doc.text(`From: ${start || "All"}  To: ${end || "All"}`, 14, 22);
 
-    const tableData = results.map((r, i) => [
-      i + 1,
-      r.orderNo,
-      r.customerName,
-      new Date(r.createdAt).toLocaleDateString(),
-      `${r.paymentMethod || "Cash"} - ${r.status}`,
-      `${r.grandTotal.toFixed(2)}`,
-      `${(r.paidAmount || 0).toFixed(2)}`,
-      `${(r.balanceAmount || 0).toFixed(2)}`,
-    ]);
+    const tableData = results.map((r, i) => {
+      const isCancelled = r.status === "Cancelled";
+      return [
+        i + 1,
+        isCancelled ? `${r.orderNo}` : r.orderNo,
+        r.customerName,
+        new Date(r.createdAt).toLocaleDateString(),
+        isCancelled ? "CANCELLED" : `${r.paymentMethod || "Cash"} - ${r.status}`,
+        isCancelled ? "0.00" : `${r.grandTotal.toFixed(2)}`,
+        isCancelled ? "0.00" : `${(r.paidAmount || 0).toFixed(2)}`,
+        isCancelled ? "0.00" : `${(r.balanceAmount || 0).toFixed(2)}`,
+      ];
+    });
 
     // Add empty row
     tableData.push(["", "", "", "", "", "", "", ""]);
 
     // Add Summary Rows
     tableData.push([
-      { content: "SUMMARY", colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
+      { content: "SUMMARY (EXCLUDING CANCELLED)", colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
       { content: totalGrand.toFixed(2), styles: { fontStyle: 'bold' } },
       { content: totalPaid.toFixed(2), styles: { fontStyle: 'bold' } },
       { content: totalBalance.toFixed(2), styles: { fontStyle: 'bold' } }
@@ -144,6 +150,12 @@ export default function Reports() {
       [{ content: "Other:", colSpan: 5, styles: { halign: 'right' } }, "", other.toFixed(2), ""]
     );
 
+    // Track which rows are cancelled for red styling
+    const cancelledRowIndices = [];
+    results.forEach((r, i) => {
+      if (r.status === "Cancelled") cancelledRowIndices.push(i);
+    });
+
     autoTable(doc, {
       startY: 28,
       head: [["No", "Order No", "Customer", "Date", "Info", "Total", "Paid", "Due"]],
@@ -155,7 +167,15 @@ export default function Reports() {
         5: { halign: 'right' },
         6: { halign: 'right' },
         7: { halign: 'right' },
-      }
+      },
+      didParseCell: function (data) {
+        // Style cancelled rows with red text and light red background
+        if (data.section === 'body' && cancelledRowIndices.includes(data.row.index)) {
+          data.cell.styles.textColor = [220, 53, 69]; // red
+          data.cell.styles.fillColor = [255, 235, 238]; // light red bg
+          data.cell.styles.fontStyle = 'italic';
+        }
+      },
     });
 
     doc.save("Sales_Report.pdf");
@@ -228,28 +248,33 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) => (
-                    <tr key={r.id || i}>
-                      <td>{i + 1}</td>
-                      <td>{r.orderNo}</td>
-                      <td>{r.customerName}</td>
-                      <td>{r.employeeName || "-"}</td>
-                      <td>{new Date(r.createdAt).toLocaleString()}</td>
-                      <td>
-                        <span className="badge bg-light text-dark border me-1">{r.paymentMethod || "Cash"}</span>
-                        <span className={`badge ${r.status === "Paid" ? "bg-success" : "bg-warning text-dark"}`}>{r.status}</span>
-                      </td>
-                      <td className="fw-bold">
-                        ₹ {r.grandTotal.toFixed(2)}
-                      </td>
-                      <td className="text-success fw-bold">
-                        ₹ {(r.paidAmount || 0).toFixed(2)}
-                      </td>
-                      <td className="text-danger fw-bold">
-                        ₹ {(r.balanceAmount || 0).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
+                  {results.map((r, i) => {
+                    const isCancelled = r.status === "Cancelled";
+                    return (
+                      <tr key={r.id || i} className={isCancelled ? "table-danger text-danger" : ""}>
+                        <td>{i + 1}</td>
+                        <td className="fw-bold">{r.orderNo}</td>
+                        <td>{r.customerName}</td>
+                        <td>{r.employeeName || "-"}</td>
+                        <td>{new Date(r.createdAt).toLocaleString()}</td>
+                        <td>
+                          <span className="badge bg-light text-dark border me-1">{r.paymentMethod || "Cash"}</span>
+                          <span className={`badge ${r.status === "Paid" ? "bg-success" : isCancelled ? "bg-danger text-white" : "bg-warning text-dark"}`}>
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className={`fw-bold ${isCancelled ? "text-decoration-line-through text-muted" : ""}`}>
+                          ₹ {r.grandTotal.toFixed(2)}
+                        </td>
+                        <td className={`fw-bold ${isCancelled ? "text-decoration-line-through text-muted" : "text-success"}`}>
+                          ₹ {(r.paidAmount || 0).toFixed(2)}
+                        </td>
+                        <td className={`fw-bold ${isCancelled ? "text-decoration-line-through text-muted" : "text-danger"}`}>
+                          ₹ {(r.balanceAmount || 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

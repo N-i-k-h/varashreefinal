@@ -16,7 +16,7 @@ export default function BalanceManagement() {
             // Filter locally for simplicity (or can add query param to API)
             // Filter: Balance > 0 AND NOT an Advance Order (starts with ADV-)
             const pending = res.data.filter(
-                (o) => o.balanceAmount > 0 && !o.orderNo.startsWith("ADV-")
+                (o) => o.balanceAmount > 0 && !o.orderNo.startsWith("ADV-") && o.status !== "Cancelled"
             );
             setOrders(pending);
         } catch (err) {
@@ -31,7 +31,7 @@ export default function BalanceManagement() {
     }, []);
 
     const handleEdit = (order) => {
-        setEditingId(order.id);
+        setEditingId(order._id || order.id);
         setEditAmount(0); // Start with 0 for incremental payment
     };
 
@@ -42,6 +42,7 @@ export default function BalanceManagement() {
 
     const handleUpdate = async (order) => {
         const payment = Number(editAmount);
+        const orderId = order._id || order.id;
 
         if (payment <= 0) return alert("Please enter a valid amount to pay");
         if (payment > order.balanceAmount) return alert("Payment amount cannot exceed proper balance");
@@ -49,7 +50,7 @@ export default function BalanceManagement() {
         const newPaidTotal = order.paidAmount + payment;
 
         try {
-            await API.put(`/orders/${order.id}/pay`, { paidAmount: newPaidTotal });
+            await API.put(`/orders/${orderId}/pay`, { paidAmount: newPaidTotal });
 
             // If fully paid, download invoice
             if (newPaidTotal >= order.grandTotal) {
@@ -92,55 +93,58 @@ export default function BalanceManagement() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {orders.map((o) => (
-                                        <tr key={o.id}>
-                                            <td className="ps-3 fw-medium">{o.orderNo}</td>
-                                            <td>{o.customerName}</td>
-                                            <td>{o.customerContact || "-"}</td>
-                                            <td className="fw-bold">₹{o.grandTotal.toFixed(2)}</td>
+                                    {orders.map((o) => {
+                                        const orderId = o._id || o.id;
+                                        return (
+                                            <tr key={orderId}>
+                                                <td className="ps-3 fw-medium">{o.orderNo}</td>
+                                                <td>{o.customerName}</td>
+                                                <td>{o.customerContact || "-"}</td>
+                                                <td className="fw-bold">₹{o.grandTotal.toFixed(2)}</td>
 
-                                            {/* EDIT MODE */}
-                                            {editingId === o.id ? (
-                                                <>
-                                                    <td style={{ minWidth: "120px" }}>
-                                                        <input
-                                                            type="number"
-                                                            className="form-control form-control-sm"
-                                                            placeholder="Amount"
-                                                            value={editAmount}
-                                                            onChange={(e) => setEditAmount(e.target.value)}
-                                                            autoFocus
-                                                        />
-                                                    </td>
-                                                    <td className="text-success fw-bold">
-                                                        {/* Preview New Balance */}
-                                                        ₹{(o.balanceAmount - Number(editAmount)).toFixed(2)}
-                                                    </td>
-                                                    <td className="pe-3">
-                                                        <div className="d-flex gap-2">
-                                                            <button className="btn btn-sm btn-success" onClick={() => handleUpdate(o)}>
-                                                                <i className="bi bi-check-lg"></i>
+                                                {/* EDIT MODE */}
+                                                {editingId === orderId ? (
+                                                    <>
+                                                        <td style={{ minWidth: "120px" }}>
+                                                            <input
+                                                                type="number"
+                                                                className="form-control form-control-sm"
+                                                                placeholder="Amount"
+                                                                value={editAmount}
+                                                                onChange={(e) => setEditAmount(e.target.value)}
+                                                                autoFocus
+                                                            />
+                                                        </td>
+                                                        <td className="text-success fw-bold">
+                                                            {/* Preview New Balance */}
+                                                            ₹{(o.balanceAmount - Number(editAmount)).toFixed(2)}
+                                                        </td>
+                                                        <td className="pe-3">
+                                                            <div className="d-flex gap-2">
+                                                                <button className="btn btn-sm btn-success" onClick={() => handleUpdate(o)}>
+                                                                    <i className="bi bi-check-lg"></i>
+                                                                </button>
+                                                                <button className="btn btn-sm btn-outline-secondary" onClick={handleCancel}>
+                                                                    <i className="bi bi-x-lg"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </>
+                                                ) : (
+                                                    // VIEW MODE
+                                                    <>
+                                                        <td>₹{o.paidAmount.toFixed(2)}</td>
+                                                        <td className="text-danger fw-bold">₹{o.balanceAmount.toFixed(2)}</td>
+                                                        <td className="pe-3">
+                                                            <button className="btn btn-sm btn-primary rounded-pill px-3" onClick={() => handleEdit(o)}>
+                                                                Update
                                                             </button>
-                                                            <button className="btn btn-sm btn-outline-secondary" onClick={handleCancel}>
-                                                                <i className="bi bi-x-lg"></i>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </>
-                                            ) : (
-                                                // VIEW MODE
-                                                <>
-                                                    <td>₹{o.paidAmount.toFixed(2)}</td>
-                                                    <td className="text-danger fw-bold">₹{o.balanceAmount.toFixed(2)}</td>
-                                                    <td className="pe-3">
-                                                        <button className="btn btn-sm btn-primary rounded-pill px-3" onClick={() => handleEdit(o)}>
-                                                            Update
-                                                        </button>
-                                                    </td>
-                                                </>
-                                            )}
-                                        </tr>
-                                    ))}
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

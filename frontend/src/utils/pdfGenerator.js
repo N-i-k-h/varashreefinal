@@ -134,6 +134,24 @@ export const generatePDF = async (type, entity, items) => {
 
     addHeader(doc, title, entity, true, logoBase64);
 
+    // Add CANCELLED watermark for cancelled bills
+    if (entity.status === "Cancelled") {
+        doc.saveGraphicsState();
+        doc.setFontSize(60);
+        doc.setTextColor(220, 53, 69); // red
+        doc.setFont("helvetica", "bold");
+        // Rotate text diagonally across the page
+        const centerX = pageWidth / 2;
+        const centerY = pageHeight / 2;
+        doc.text("CANCELLED", centerX, centerY, {
+            align: "center",
+            angle: 45,
+            renderingMode: "fillThenStroke",
+        });
+        doc.setTextColor(0, 0, 0);
+        doc.restoreGraphicsState();
+    }
+
     const tableData = items.map((it, i) => [
         i + 1,
         it.plantName,

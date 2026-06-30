@@ -50,6 +50,7 @@ export default function Sidebar({ toggleSidebar, open }) {
               { to: "/plants/manage", icon: "pencil-square", label: "Manage Plants" },
               { to: "/orders/create", icon: "basket", label: "Create Order" },
               { to: "/balances", icon: "cash-coin", label: "Balance Management" },
+              { to: "/bills", icon: "receipt", label: "Bill Management" },
               { to: "/purchases", icon: "bag-check", label: "Sales Report" },
               { to: "/estimations/create", icon: "file-earmark-text", label: "Create Estimation" },
               { to: "/reports", icon: "bar-chart", label: "Reports" },
@@ -76,7 +77,7 @@ export default function Sidebar({ toggleSidebar, open }) {
       </div>
 
       {/* DESKTOP SPACE FIXER */}
-      <div className="d-none d-md-block" style={{ width: "250px" }}></div>
+      <div className="d-none d-md-block" style={{ width: "250px", minWidth: "250px", flexShrink: 0 }}></div>
     </>
   );
 }

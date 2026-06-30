@@ -14,6 +14,7 @@ import PurchaseDashboard from "./components/PurchaseDashboard";
 import BalanceManagement from "./components/BalanceManagement";
 import AdvanceOrders from "./components/AdvanceOrders";
 import CreateAdvanceOrder from "./components/CreateAdvanceOrder";
+import BillManagement from "./components/BillManagement";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -46,7 +47,7 @@ export default function App() {
           <Sidebar open={sidebarOpen} toggleSidebar={setSidebarOpen} />
 
           {/* MAIN CONTENT */}
-          <main className="flex-grow-1 bg-light">
+          <main className="flex-grow-1 bg-light" style={{ minWidth: 0 }}>
 
             {/* Top Bar */}
             <div className="d-flex justify-content-between align-items-center p-3 bg-white shadow-sm">
@@ -86,6 +87,7 @@ export default function App() {
                 <Route path="/estimations/create" element={<CreateEstimation />} />
                 <Route path="/purchases" element={<PurchaseDashboard />} />
                 <Route path="/balances" element={<BalanceManagement />} />
+                <Route path="/bills" element={<BillManagement />} />
                 <Route path="/advances" element={<AdvanceOrders />} />
                 <Route path="/advances/create" element={<CreateAdvanceOrder />} />
 

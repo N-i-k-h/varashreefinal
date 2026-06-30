@@ -417,6 +417,9 @@ router.put("/:id/pay", async (req, res) => {
 // ========================
 //    DELETE ORDER
 // ========================
+// ========================
+//    DELETE ORDER (CANCEL BILL)
+// ========================
 router.delete("/:id", async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -424,20 +427,227 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // Restore plant stock
-    for (const item of order.orderItems) {
-      await Plant.findByIdAndUpdate(item.plantId, { $inc: { stock: item.quantity } });
+    // Restore plant stock if the order wasn't already Cancelled
+    if (order.status !== "Cancelled") {
+      for (const item of order.orderItems) {
+        await Plant.findByIdAndUpdate(item.plantId, { $inc: { stock: item.quantity } });
+      }
+      order.status = "Cancelled";
+      await order.save();
     }
 
-    // Delete order
-    await Order.findByIdAndDelete(order.id);
-
-    res.json({ message: "Order deleted successfully and stock restored" });
+    res.json({ message: "Order cancelled successfully and stock restored", order });
   } catch (err) {
-    console.error("❌ Delete order error:", err);
+    console.error("❌ Delete/Cancel order error:", err);
     res.status(400).json({
-      error: err.message || "Failed to delete order",
+      error: err.message || "Failed to cancel order",
     });
+  }
+});
+
+// ========================
+//    UPDATE ORDER (EDIT BILL)
+// ========================
+router.put("/:id", async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    const payload = req.body;
+    const oldStatus = order.status;
+    const newStatus = payload.status || oldStatus;
+
+    const itemsChanged = payload.items !== undefined;
+    const becameCancelled = (oldStatus !== "Cancelled" && newStatus === "Cancelled");
+    const becameActive = (oldStatus === "Cancelled" && newStatus !== "Cancelled");
+    const remainedActive = (oldStatus !== "Cancelled" && newStatus !== "Cancelled");
+
+    if (itemsChanged) {
+      if (remainedActive) {
+        // Restore old stock
+        for (const item of order.orderItems) {
+          await Plant.findByIdAndUpdate(item.plantId, { $inc: { stock: item.quantity } });
+        }
+
+        // Deduct new stock
+        const completedUpdates = [];
+        try {
+          const sortedItems = [...payload.items].sort((a, b) =>
+            String(a.plantId).localeCompare(String(b.plantId))
+          );
+
+          for (const item of sortedItems) {
+            const plant = await Plant.findOneAndUpdate(
+              { _id: item.plantId, stock: { $gte: item.quantity } },
+              { $inc: { stock: -item.quantity } },
+              { new: true }
+            );
+
+            if (!plant) {
+              const exists = await Plant.findById(item.plantId);
+              const name = exists ? exists.plantName : item.plantName || "Plant";
+              const avail = exists ? exists.stock : 0;
+              throw new Error(`Insufficient stock for ${name}. Available: ${avail}, Requested: ${item.quantity}`);
+            }
+            completedUpdates.push({ plantId: item.plantId, quantity: item.quantity });
+          }
+        } catch (error) {
+          // Rollback new stock deductions
+          for (const update of completedUpdates) {
+            await Plant.findByIdAndUpdate(update.plantId, { $inc: { stock: update.quantity } });
+          }
+          // Re-deduct old stock
+          for (const item of order.orderItems) {
+            await Plant.findByIdAndUpdate(item.plantId, { $inc: { stock: -item.quantity } });
+          }
+          throw error;
+        }
+
+        // Update items
+        order.orderItems = payload.items.map(item => ({
+          plantId: item.plantId,
+          plantName: item.plantName,
+          rate: item.rate,
+          quantity: item.quantity,
+          total: item.total
+        }));
+
+      } else if (becameCancelled) {
+        // Restore old stock, do NOT deduct new stock
+        for (const item of order.orderItems) {
+          await Plant.findByIdAndUpdate(item.plantId, { $inc: { stock: item.quantity } });
+        }
+        // Update items
+        order.orderItems = payload.items.map(item => ({
+          plantId: item.plantId,
+          plantName: item.plantName,
+          rate: item.rate,
+          quantity: item.quantity,
+          total: item.total
+        }));
+
+      } else if (becameActive) {
+        // Deduct new stock (old was already restored when cancelled)
+        const completedUpdates = [];
+        try {
+          const sortedItems = [...payload.items].sort((a, b) =>
+            String(a.plantId).localeCompare(String(b.plantId))
+          );
+
+          for (const item of sortedItems) {
+            const plant = await Plant.findOneAndUpdate(
+              { _id: item.plantId, stock: { $gte: item.quantity } },
+              { $inc: { stock: -item.quantity } },
+              { new: true }
+            );
+
+            if (!plant) {
+              const exists = await Plant.findById(item.plantId);
+              const name = exists ? exists.plantName : item.plantName || "Plant";
+              const avail = exists ? exists.stock : 0;
+              throw new Error(`Insufficient stock for ${name}. Available: ${avail}, Requested: ${item.quantity}`);
+            }
+            completedUpdates.push({ plantId: item.plantId, quantity: item.quantity });
+          }
+        } catch (error) {
+          // Rollback new stock deductions
+          for (const update of completedUpdates) {
+            await Plant.findByIdAndUpdate(update.plantId, { $inc: { stock: update.quantity } });
+          }
+          throw error;
+        }
+
+        // Update items
+        order.orderItems = payload.items.map(item => ({
+          plantId: item.plantId,
+          plantName: item.plantName,
+          rate: item.rate,
+          quantity: item.quantity,
+          total: item.total
+        }));
+
+      } else { // remainedCancelled
+        // Just update items, no stock changes
+        order.orderItems = payload.items.map(item => ({
+          plantId: item.plantId,
+          plantName: item.plantName,
+          rate: item.rate,
+          quantity: item.quantity,
+          total: item.total
+        }));
+      }
+
+    } else {
+      // Items not changed in payload, but status changed
+      if (becameCancelled) {
+        // Restore old stock
+        for (const item of order.orderItems) {
+          await Plant.findByIdAndUpdate(item.plantId, { $inc: { stock: item.quantity } });
+        }
+      } else if (becameActive) {
+        // Deduct old stock
+        const completedUpdates = [];
+        try {
+          const sortedItems = [...order.orderItems].sort((a, b) =>
+            String(a.plantId).localeCompare(String(b.plantId))
+          );
+
+          for (const item of sortedItems) {
+            const plant = await Plant.findOneAndUpdate(
+              { _id: item.plantId, stock: { $gte: item.quantity } },
+              { $inc: { stock: -item.quantity } },
+              { new: true }
+            );
+
+            if (!plant) {
+              const exists = await Plant.findById(item.plantId);
+              const name = exists ? exists.plantName : item.plantName || "Plant";
+              const avail = exists ? exists.stock : 0;
+              throw new Error(`Insufficient stock for ${name}. Available: ${avail}, Requested: ${item.quantity}`);
+            }
+            completedUpdates.push({ plantId: item.plantId, quantity: item.quantity });
+          }
+        } catch (error) {
+          // Rollback deductions
+          for (const update of completedUpdates) {
+            await Plant.findByIdAndUpdate(update.plantId, { $inc: { stock: update.quantity } });
+          }
+          throw error;
+        }
+      }
+    }
+
+    // Update remaining properties
+    if (payload.customerName !== undefined) order.customerName = payload.customerName;
+    if (payload.customerContact !== undefined) order.customerContact = payload.customerContact;
+    if (payload.customerAddress !== undefined) order.customerAddress = payload.customerAddress;
+    if (payload.employeeName !== undefined) order.employeeName = payload.employeeName;
+    if (payload.subTotal !== undefined) order.subTotal = payload.subTotal;
+    if (payload.discount !== undefined) order.discount = payload.discount;
+    if (payload.tax !== undefined) order.tax = payload.tax;
+    if (payload.grandTotal !== undefined) order.grandTotal = payload.grandTotal;
+    if (payload.paidAmount !== undefined) order.paidAmount = payload.paidAmount;
+    if (payload.paymentMethod !== undefined) order.paymentMethod = payload.paymentMethod;
+    if (payload.createdAt !== undefined) order.createdAt = new Date(payload.createdAt);
+
+    // Compute balanceAmount and status
+    order.balanceAmount = order.grandTotal - (order.paidAmount || 0);
+
+    if (newStatus === "Cancelled") {
+      order.status = "Cancelled";
+    } else {
+      order.status = order.balanceAmount <= 0 ? "Paid" : "Pending";
+    }
+
+    if (payload.finalPaymentDate !== undefined) {
+      order.finalPaymentDate = payload.finalPaymentDate;
+    }
+
+    await order.save();
+    res.json({ message: "Order updated successfully", order });
+  } catch (err) {
+    console.error("❌ Update order error:", err);
+    res.status(400).json({ error: err.message || "Failed to update order" });
   }
 });
 
