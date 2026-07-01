@@ -486,7 +486,7 @@ export default function BillManagement() {
       {showEditModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", overflowY: "auto" }}>
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
-            <div className="modal-content border-0 shadow-lg">
+            <form onSubmit={handleSaveEdit} className="modal-content border-0 shadow-lg">
               <div className="modal-header bg-success text-white">
                 <h5 className="modal-title fw-bold">
                   <i className="bi bi-pencil-square me-2"></i> Edit Bill: {editingOrder?.orderNo}
@@ -497,8 +497,6 @@ export default function BillManagement() {
                   onClick={() => setShowEditModal(false)}
                 ></button>
               </div>
-
-              <form onSubmit={handleSaveEdit}>
                 <div className="modal-body p-4">
                   {/* Customer Information */}
                   <h6 className="fw-bold text-success border-bottom pb-2 mb-3">Customer Information</h6>
@@ -561,6 +559,17 @@ export default function BillManagement() {
                     </button>
                   </div>
 
+                  {/* DESKTOP HEADER ONLY */}
+                  {editItems.length > 0 && (
+                    <div className="row g-2 fw-bold text-muted border-bottom pb-2 mb-2 d-none d-md-flex">
+                      <div className="col-md-5">Plant</div>
+                      <div className="col-md-2">Rate</div>
+                      <div className="col-md-2">Quantity</div>
+                      <div className="col-md-2">Total</div>
+                      <div className="col-md-1 text-end">Action</div>
+                    </div>
+                  )}
+
                   <div className="mb-4">
                     {editItems.map((it, idx) => {
                       const filteredPlants = plants.filter((p) =>
@@ -570,7 +579,7 @@ export default function BillManagement() {
                       return (
                         <div key={idx} className="border rounded p-3 mb-2 bg-light">
                           <div className="row g-2 align-items-center">
-                            <div className="col-md-5 position-relative">
+                            <div className="col-12 col-md-5 position-relative mb-2 mb-md-0">
                               <label className="small fw-semibold d-md-none">Plant</label>
                               <input
                                 type="text"
@@ -600,18 +609,18 @@ export default function BillManagement() {
                               )}
                             </div>
 
-                            <div className="col-md-2">
+                            <div className="col-3 col-md-2">
                               <label className="small fw-semibold d-md-none">Rate</label>
                               <input
                                 type="text"
                                 className="form-control form-control-sm"
                                 readOnly
-                                value={it.rate ? `₹${it.rate.toFixed(2)}` : ""}
+                                value={it.rate ? `₹${it.rate.toFixed(0)}` : ""}
                               />
                             </div>
 
-                            <div className="col-md-2">
-                              <label className="small fw-semibold d-md-none">Quantity</label>
+                            <div className="col-3 col-md-2">
+                              <label className="small fw-semibold d-md-none">Qty</label>
                               <input
                                 type="number"
                                 className="form-control form-control-sm"
@@ -621,20 +630,21 @@ export default function BillManagement() {
                               />
                             </div>
 
-                            <div className="col-md-2">
+                            <div className="col-3 col-md-2">
                               <label className="small fw-semibold d-md-none">Total</label>
                               <input
                                 type="text"
                                 className="form-control form-control-sm"
                                 readOnly
-                                value={it.total ? `₹${it.total.toFixed(2)}` : ""}
+                                value={it.total ? `₹${it.total.toFixed(0)}` : ""}
                               />
                             </div>
 
-                            <div className="col-md-1 text-end">
+                            <div className="col-3 col-md-1 text-end">
+                              <label className="small fw-semibold d-md-none">&nbsp;</label>
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-danger"
+                                className="btn btn-sm btn-outline-danger w-100"
                                 onClick={() => removeEditItem(idx)}
                               >
                                 <i className="bi bi-trash"></i>
@@ -745,8 +755,7 @@ export default function BillManagement() {
                     Save Changes
                   </button>
                 </div>
-              </form>
-            </div>
+            </form>
           </div>
         </div>
       )}

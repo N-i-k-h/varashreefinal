@@ -39,6 +39,25 @@ const loadImageBase64 = (url) => {
     });
 };
 
+/* ================= DRAW STRIKETHROUGH ================= */
+const drawStrikethrough = (doc, text, x, y, align = "left") => {
+    const textWidth = doc.getTextWidth(text);
+    let startX = x;
+    if (align === "right") {
+        startX = x - textWidth;
+    } else if (align === "center") {
+        startX = x - textWidth / 2;
+    }
+    const fontSize = doc.internal.getFontSize();
+    const centerY = y - (fontSize / 72) * 25.4 * 0.23; // mathematically centered
+    doc.setDrawColor(220, 53, 69); // red color
+    doc.setLineWidth(0.4);
+    doc.line(startX, centerY, startX + textWidth, centerY);
+    // Restore defaults manually
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+};
+
 /* ================= SHARED HEADER ================= */
 const addHeader = (doc, title, entity, isFirstPage, logoBase64) => {
     const pageWidth = doc.internal.pageSize.width;
@@ -134,24 +153,6 @@ export const generatePDF = async (type, entity, items) => {
 
     addHeader(doc, title, entity, true, logoBase64);
 
-    // Add CANCELLED watermark for cancelled bills
-    if (entity.status === "Cancelled") {
-        doc.saveGraphicsState();
-        doc.setFontSize(60);
-        doc.setTextColor(220, 53, 69); // red
-        doc.setFont("helvetica", "bold");
-        // Rotate text diagonally across the page
-        const centerX = pageWidth / 2;
-        const centerY = pageHeight / 2;
-        doc.text("CANCELLED", centerX, centerY, {
-            align: "center",
-            angle: 45,
-            renderingMode: "fillThenStroke",
-        });
-        doc.setTextColor(0, 0, 0);
-        doc.restoreGraphicsState();
-    }
-
     const tableData = items.map((it, i) => [
         i + 1,
         it.plantName,
@@ -190,6 +191,36 @@ export const generatePDF = async (type, entity, items) => {
                 addHeader(doc, title, entity, false, logoBase64);
             }
         },
+        didDrawCell: (data) => {
+            if (entity.status === "Cancelled" && (data.column.index === 3 || data.column.index === 4) && data.section === "body") {
+                const cell = data.cell;
+                const text = cell.text[0] || "";
+                const textWidth = doc.getTextWidth(text);
+                
+                let paddingRight = 4;
+                if (cell.padding) {
+                    if (typeof cell.padding === "object") {
+                        paddingRight = cell.padding.right ?? 4;
+                    } else if (typeof cell.padding === "function") {
+                        paddingRight = cell.padding('right') ?? 4;
+                    } else if (typeof cell.padding === "number") {
+                        paddingRight = cell.padding;
+                    }
+                } else if (cell.styles && typeof cell.styles.cellPadding === "number") {
+                    paddingRight = cell.styles.cellPadding;
+                }
+                
+                const startX = cell.x + cell.width - paddingRight - textWidth;
+                const centerY = cell.y + cell.height / 2 - 0.4;
+                
+                doc.setDrawColor(220, 53, 69); // red color
+                doc.setLineWidth(0.4);
+                doc.line(startX, centerY, startX + textWidth, centerY);
+                // Restore defaults manually
+                doc.setDrawColor(0, 0, 0);
+                doc.setLineWidth(0.3);
+            }
+        },
         margin: { top: 15, bottom: 15, left: 10, right: 10 }
     });
 
@@ -207,27 +238,57 @@ export const generatePDF = async (type, entity, items) => {
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.text(`Total Plants : ${totalPlants}`, pageWidth - 15, finalY, { align: "right" });
+        
         finalY += 6;
-        doc.text(`Subtotal : Rs. ${entity.subTotal.toFixed(2)}`, pageWidth - 15, finalY, { align: "right" });
-        finalY += 6;
-        if (entity.discount > 0) {
-            doc.text(`Discount : Rs. ${entity.discount.toFixed(2)}`, pageWidth - 15, finalY, { align: "right" });
-            finalY += 6;
+        const subtotalText = `Subtotal : Rs. ${entity.subTotal.toFixed(2)}`;
+        doc.text(subtotalText, pageWidth - 15, finalY, { align: "right" });
+        if (entity.status === "Cancelled") {
+            drawStrikethrough(doc, subtotalText, pageWidth - 15, finalY, "right");
         }
+
+        if (entity.discount > 0) {
+            finalY += 6;
+            const discountText = `Discount : Rs. ${entity.discount.toFixed(2)}`;
+            doc.text(discountText, pageWidth - 15, finalY, { align: "right" });
+            if (entity.status === "Cancelled") {
+                drawStrikethrough(doc, discountText, pageWidth - 15, finalY, "right");
+            }
+        }
+
+        finalY += 6;
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
-        doc.text(`Grand Total : Rs. ${entity.grandTotal.toFixed(2)}`, pageWidth - 15, finalY, { align: "right" });
+        const grandTotalText = `Grand Total : Rs. ${entity.grandTotal.toFixed(2)}`;
+        doc.text(grandTotalText, pageWidth - 15, finalY, { align: "right" });
+        if (entity.status === "Cancelled") {
+            drawStrikethrough(doc, grandTotalText, pageWidth - 15, finalY, "right");
+        }
+
         finalY += 6;
-        doc.text(`Paid Amount : Rs. ${(entity.paidAmount || 0).toFixed(2)}`, pageWidth - 15, finalY, { align: "right" });
+        const paidText = `Paid Amount : Rs. ${(entity.paidAmount || 0).toFixed(2)}`;
+        doc.text(paidText, pageWidth - 15, finalY, { align: "right" });
+        if (entity.status === "Cancelled") {
+            drawStrikethrough(doc, paidText, pageWidth - 15, finalY, "right");
+        }
+
         finalY += 6;
         doc.setTextColor(200, 0, 0);
-        doc.text(`Balance Due : Rs. ${(entity.balanceAmount || 0).toFixed(2)}`, pageWidth - 15, finalY, { align: "right" });
+        const balanceText = `Balance Due : Rs. ${(entity.balanceAmount || 0).toFixed(2)}`;
+        doc.text(balanceText, pageWidth - 15, finalY, { align: "right" });
+        if (entity.status === "Cancelled") {
+            drawStrikethrough(doc, balanceText, pageWidth - 15, finalY, "right");
+        }
         doc.setTextColor(0, 0, 0);
         
         finalY += 15;
         doc.setFont("helvetica", "italic");
         doc.setFontSize(9);
-        doc.text(`Amount in words: ${convertToWords(entity.grandTotal)}`, pageWidth / 2, finalY, { align: "center" });
+        const amountWordsText = `Amount in words: ${convertToWords(entity.grandTotal)}`;
+        doc.text(amountWordsText, pageWidth / 2, finalY, { align: "center" });
+        if (entity.status === "Cancelled") {
+            drawStrikethrough(doc, amountWordsText, pageWidth / 2, finalY, "center");
+        }
+
         finalY += 10;
         doc.setFont("helvetica", "normal");
         doc.text("Note: Plants once sold cannot be replaced or exchanged.", pageWidth / 2, finalY, { align: "center" });
@@ -264,6 +325,23 @@ export const generatePDF = async (type, entity, items) => {
         finalY += 10;
         doc.setFont("helvetica", "normal");
         doc.text("This is an estimate only. Prices may change.", pageWidth / 2, finalY, { align: "center" });
+    }
+
+    // Add CANCELLED watermark for cancelled bills at the very end (on top of table/text)
+    if (entity.status === "Cancelled") {
+        doc.setFontSize(60);
+        doc.setTextColor(250, 215, 215); // Light pastel pink/red watermark color (looks translucent, 100% compatible)
+        doc.setFont("helvetica", "bold");
+        
+        const centerX = pageWidth / 2;
+        const centerY = pageHeight / 2;
+        doc.text("CANCELLED", centerX, centerY, {
+            align: "center",
+            angle: 45,
+        });
+        // Restore defaults manually
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
     }
 
     doc.save(`${title}_${entity.orderNo || entity.estimateNo}.pdf`);
